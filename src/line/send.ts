@@ -14,6 +14,7 @@ type FlexMessage = messagingApi.FlexMessage;
 type FlexContainer = messagingApi.FlexContainer;
 type TemplateMessage = messagingApi.TemplateMessage;
 type QuickReply = messagingApi.QuickReply;
+type AudioMessage = messagingApi.AudioMessage;
 type QuickReplyItem = messagingApi.QuickReplyItem;
 
 // Cache for user profiles
@@ -28,6 +29,7 @@ interface LineSendOpts {
   accountId?: string;
   verbose?: boolean;
   mediaUrl?: string;
+  audioDuration?: number; // milliseconds, for LINE audio messages
   replyToken?: string;
 }
 
@@ -68,6 +70,34 @@ function normalizeTarget(to: string): string {
 
 function createTextMessage(text: string): TextMessage {
   return { type: "text", text };
+}
+
+export function isAudioUrl(url: string): boolean {
+  const path = url.split("?")[0];
+  // Check known audio download path (signed URLs have no extension)
+  if (path.includes("/audio/download")) {
+    return true;
+  }
+  const ext = path.split(".").pop()?.toLowerCase();
+  return ["mp3", "m4a", "wav", "aac", "ogg"].includes(ext ?? "");
+}
+
+export function createAudioMessage(originalContentUrl: string, duration?: number): AudioMessage {
+  // Parse dur= from URL if no explicit duration
+  if (!duration) {
+    try {
+      const u = new URL(originalContentUrl);
+      const dur = u.searchParams.get("dur");
+      if (dur) duration = parseInt(dur, 10);
+    } catch {
+      /* ignore */
+    }
+  }
+  return {
+    type: "audio",
+    originalContentUrl,
+    duration: duration ?? 60000,
+  };
 }
 
 export function createImageMessage(
@@ -132,7 +162,12 @@ export async function sendMessageLine(
 
   // Add media if provided
   if (opts.mediaUrl?.trim()) {
-    messages.push(createImageMessage(opts.mediaUrl.trim()));
+    const url = opts.mediaUrl.trim();
+    if (isAudioUrl(url)) {
+      messages.push(createAudioMessage(url, opts.audioDuration));
+    } else {
+      messages.push(createImageMessage(url));
+    }
   }
 
   // Add text message

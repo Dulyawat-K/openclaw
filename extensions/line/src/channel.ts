@@ -479,11 +479,22 @@ export const linePlugin: ChannelPlugin<ResolvedLineAccount> = {
           if (!trimmed) {
             continue;
           }
-          quickReplyMessages.push({
-            type: "image",
-            originalContentUrl: trimmed,
-            previewImageUrl: trimmed,
-          });
+          const path = trimmed.split("?")[0];
+          const ext = path.split(".").pop()?.toLowerCase();
+          const isAudio = path.includes("/audio/download") || ["mp3", "m4a", "wav", "aac", "ogg"].includes(ext ?? "");
+          if (isAudio) {
+            quickReplyMessages.push({
+              type: "audio",
+              originalContentUrl: trimmed,
+              duration: 60000,
+            });
+          } else {
+            quickReplyMessages.push({
+              type: "image",
+              originalContentUrl: trimmed,
+              previewImageUrl: trimmed,
+            });
+          }
         }
         if (quickReplyMessages.length > 0 && quickReply) {
           const lastIndex = quickReplyMessages.length - 1;
