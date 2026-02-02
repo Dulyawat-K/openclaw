@@ -18,6 +18,11 @@ import {
   type OpenAiBatchRequest,
   runOpenAiEmbeddingBatches,
 } from "./batch-openai.js";
+import {
+  consolidateMemory,
+  type ConsolidationConfig,
+  type ConsolidationResult,
+} from "./consolidation.js";
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
 import { DEFAULT_OPENAI_EMBEDDING_MODEL } from "./embeddings-openai.js";
 import {
@@ -27,7 +32,12 @@ import {
   type GeminiEmbeddingClient,
   type OpenAiEmbeddingClient,
 } from "./embeddings.js";
-import { bm25RankToScore, buildFtsQuery, mergeHybridResults } from "./hybrid.js";
+import {
+  bm25RankToScore,
+  buildFtsQuery,
+  mergeHybridResults,
+  type RecencyBoostConfig,
+} from "./hybrid.js";
 import {
   buildFileEntry,
   chunkMarkdown,
@@ -88,6 +98,8 @@ type MemorySyncProgressState = {
 };
 
 const META_KEY = "memory_index_meta_v1";
+const CONSOLIDATION_META_KEY = "last_consolidation_at";
+const CONSOLIDATION_INTERVAL_MS = 7 * 86_400_000; // 7 days
 const SNIPPET_MAX_CHARS = 700;
 const VECTOR_TABLE = "chunks_vec";
 const FTS_TABLE = "chunks_fts";
@@ -312,6 +324,7 @@ export class MemoryIndexManager {
       keyword: keywordResults,
       vectorWeight: hybrid.vectorWeight,
       textWeight: hybrid.textWeight,
+      recency: { now: Date.now() },
     });
 
     return merged.filter((entry) => entry.score >= minScore).slice(0, maxResults);
@@ -320,7 +333,8 @@ export class MemoryIndexManager {
   private async searchVector(
     queryVec: number[],
     limit: number,
-  ): Promise<Array<MemorySearchResult & { id: string }>> {
+    opts?: { pathFilter?: string },
+  ): Promise<Array<MemorySearchResult & { id: string; updatedAt: number }>> {
     const results = await searchVector({
       db: this.db,
       vectorTable: VECTOR_TABLE,
@@ -331,8 +345,9 @@ export class MemoryIndexManager {
       ensureVectorReady: async (dimensions) => await this.ensureVectorReady(dimensions),
       sourceFilterVec: this.buildSourceFilter("c"),
       sourceFilterChunks: this.buildSourceFilter(),
+      pathFilter: opts?.pathFilter,
     });
-    return results.map((entry) => entry as MemorySearchResult & { id: string });
+    return results.map((entry) => entry as MemorySearchResult & { id: string; updatedAt: number });
   }
 
   private buildFtsQuery(raw: string): string | null {
@@ -342,7 +357,8 @@ export class MemoryIndexManager {
   private async searchKeyword(
     query: string,
     limit: number,
-  ): Promise<Array<MemorySearchResult & { id: string; textScore: number }>> {
+    opts?: { pathFilter?: string },
+  ): Promise<Array<MemorySearchResult & { id: string; textScore: number; updatedAt: number }>> {
     if (!this.fts.enabled || !this.fts.available) {
       return [];
     }
@@ -357,15 +373,19 @@ export class MemoryIndexManager {
       sourceFilter,
       buildFtsQuery: (raw) => this.buildFtsQuery(raw),
       bm25RankToScore,
+      pathFilter: opts?.pathFilter,
     });
-    return results.map((entry) => entry as MemorySearchResult & { id: string; textScore: number });
+    return results.map(
+      (entry) => entry as MemorySearchResult & { id: string; textScore: number; updatedAt: number },
+    );
   }
 
   private mergeHybridResults(params: {
-    vector: Array<MemorySearchResult & { id: string }>;
-    keyword: Array<MemorySearchResult & { id: string; textScore: number }>;
+    vector: Array<MemorySearchResult & { id: string; updatedAt: number }>;
+    keyword: Array<MemorySearchResult & { id: string; textScore: number; updatedAt: number }>;
     vectorWeight: number;
     textWeight: number;
+    recency?: RecencyBoostConfig;
   }): MemorySearchResult[] {
     const merged = mergeHybridResults({
       vector: params.vector.map((r) => ({
@@ -376,6 +396,7 @@ export class MemoryIndexManager {
         source: r.source,
         snippet: r.snippet,
         vectorScore: r.score,
+        updatedAt: r.updatedAt,
       })),
       keyword: params.keyword.map((r) => ({
         id: r.id,
@@ -385,11 +406,72 @@ export class MemoryIndexManager {
         source: r.source,
         snippet: r.snippet,
         textScore: r.textScore,
+        updatedAt: r.updatedAt,
       })),
       vectorWeight: params.vectorWeight,
       textWeight: params.textWeight,
+      recency: params.recency,
     });
     return merged.map((entry) => entry as MemorySearchResult);
+  }
+
+  async runConsolidation(params: {
+    config?: Partial<ConsolidationConfig>;
+    summarize: (text: string, prompt: string) => Promise<string>;
+  }): Promise<ConsolidationResult> {
+    return consolidateMemory({
+      workspaceDir: this.workspaceDir,
+      config: params.config,
+      summarize: params.summarize,
+    });
+  }
+
+  private shouldRunConsolidation(): boolean {
+    if (!this.sources.has("memory")) return false;
+    try {
+      const row = this.db
+        .prepare(`SELECT value FROM meta WHERE key = ?`)
+        .get(CONSOLIDATION_META_KEY) as { value: string } | undefined;
+      if (!row?.value) return true;
+      const lastRun = Number(row.value);
+      return Date.now() - lastRun > CONSOLIDATION_INTERVAL_MS;
+    } catch {
+      return true;
+    }
+  }
+
+  private markConsolidationRun(): void {
+    this.db
+      .prepare(
+        `INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+      )
+      .run(CONSOLIDATION_META_KEY, String(Date.now()));
+  }
+
+  async findContradictions(
+    newFact: string,
+    opts?: { topK?: number; minScore?: number },
+  ): Promise<MemorySearchResult[]> {
+    const topK = opts?.topK ?? 5;
+    const minScore = opts?.minScore ?? 0.8;
+    const cleaned = newFact.trim();
+    if (!cleaned) return [];
+
+    const queryVec = await this.embedQueryWithTimeout(cleaned);
+    const hasVector = queryVec.some((v) => v !== 0);
+    if (!hasVector) return [];
+
+    const results = await this.searchVector(queryVec, topK, { pathFilter: "MEMORY.md" });
+    return results
+      .filter((r) => r.score >= minScore)
+      .map((r) => ({
+        path: r.path,
+        startLine: r.startLine,
+        endLine: r.endLine,
+        score: r.score,
+        snippet: r.snippet,
+        source: r.source,
+      }));
   }
 
   async sync(params?: {

@@ -8,6 +8,7 @@ export type HybridVectorResult = {
   source: HybridSource;
   snippet: string;
   vectorScore: number;
+  updatedAt: number;
 };
 
 export type HybridKeywordResult = {
@@ -18,6 +19,7 @@ export type HybridKeywordResult = {
   source: HybridSource;
   snippet: string;
   textScore: number;
+  updatedAt: number;
 };
 
 export function buildFtsQuery(raw: string): string | null {
@@ -38,11 +40,18 @@ export function bm25RankToScore(rank: number): number {
   return 1 / (1 + normalized);
 }
 
+export type RecencyBoostConfig = {
+  now?: number;
+  recencyHalfLifeDays?: number;
+  sourceBoosts?: Record<string, number>;
+};
+
 export function mergeHybridResults(params: {
   vector: HybridVectorResult[];
   keyword: HybridKeywordResult[];
   vectorWeight: number;
   textWeight: number;
+  recency?: RecencyBoostConfig;
 }): Array<{
   path: string;
   startLine: number;
@@ -51,6 +60,10 @@ export function mergeHybridResults(params: {
   snippet: string;
   source: HybridSource;
 }> {
+  const now = params.recency?.now ?? Date.now();
+  const halfLifeDays = params.recency?.recencyHalfLifeDays ?? 14;
+  const sourceBoosts = params.recency?.sourceBoosts ?? { memory: 1.2, sessions: 1.0 };
+
   const byId = new Map<
     string,
     {
@@ -62,6 +75,7 @@ export function mergeHybridResults(params: {
       snippet: string;
       vectorScore: number;
       textScore: number;
+      updatedAt: number;
     }
   >();
 
@@ -75,6 +89,7 @@ export function mergeHybridResults(params: {
       snippet: r.snippet,
       vectorScore: r.vectorScore,
       textScore: 0,
+      updatedAt: r.updatedAt,
     });
   }
 
@@ -82,9 +97,8 @@ export function mergeHybridResults(params: {
     const existing = byId.get(r.id);
     if (existing) {
       existing.textScore = r.textScore;
-      if (r.snippet && r.snippet.length > 0) {
-        existing.snippet = r.snippet;
-      }
+      if (r.snippet && r.snippet.length > 0) existing.snippet = r.snippet;
+      if (r.updatedAt > existing.updatedAt) existing.updatedAt = r.updatedAt;
     } else {
       byId.set(r.id, {
         id: r.id,
@@ -95,12 +109,17 @@ export function mergeHybridResults(params: {
         snippet: r.snippet,
         vectorScore: 0,
         textScore: r.textScore,
+        updatedAt: r.updatedAt,
       });
     }
   }
 
   const merged = Array.from(byId.values()).map((entry) => {
-    const score = params.vectorWeight * entry.vectorScore + params.textWeight * entry.textScore;
+    const baseScore = params.vectorWeight * entry.vectorScore + params.textWeight * entry.textScore;
+    const ageDays = (now - entry.updatedAt) / 86_400_000;
+    const recencyMultiplier = 1 + Math.pow(0.5, ageDays / halfLifeDays);
+    const sourceMultiplier = sourceBoosts[entry.source] ?? 1.0;
+    const score = baseScore * recencyMultiplier * sourceMultiplier;
     return {
       path: entry.path,
       startLine: entry.startLine,
@@ -111,5 +130,5 @@ export function mergeHybridResults(params: {
     };
   });
 
-  return merged.toSorted((a, b) => b.score - a.score);
+  return merged.sort((a, b) => b.score - a.score);
 }

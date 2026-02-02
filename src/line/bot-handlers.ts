@@ -25,7 +25,13 @@ import {
   type LineInboundContext,
 } from "./bot-message-context.js";
 import { downloadLineMedia } from "./download.js";
-import { pushMessageLine, replyMessageLine } from "./send.js";
+import { createCarousel } from "./flex-templates.js";
+import {
+  pushFlexMessage,
+  pushMessageLine,
+  pushTextMessageWithQuickReplies,
+  replyMessageLine,
+} from "./send.js";
 
 interface MediaRef {
   path: string;
@@ -261,10 +267,197 @@ async function handleMessageEvent(event: MessageEvent, context: LineHandlerConte
   await processMessage(messageContext);
 }
 
-async function handleFollowEvent(event: FollowEvent, _context: LineHandlerContext): Promise<void> {
+async function handleFollowEvent(event: FollowEvent, context: LineHandlerContext): Promise<void> {
   const userId = event.source.type === "user" ? event.source.userId : undefined;
   logVerbose(`line: user ${userId ?? "unknown"} followed`);
-  // Could implement welcome message here
+
+  if (!userId) return;
+
+  const sendOpts = {
+    channelAccessToken: context.account.channelAccessToken,
+    accountId: context.account.accountId,
+  };
+
+  try {
+    // Message 1: FlexMessage carousel introducing features
+    const bubbles = [
+      {
+        type: "bubble" as const,
+        size: "kilo" as const,
+        body: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "text" as const,
+              text: "สวัสดีค่ะ! ระริเองค่า~ 💕",
+              weight: "bold" as const,
+              size: "lg" as const,
+              color: "#06C755",
+              wrap: true,
+            },
+            {
+              type: "text" as const,
+              text: "ระริเป็นผู้ช่วยการเงินส่วนตัวค่ะ! บอกระริแค่ว่าใช้จ่ายอะไร ระริจัดการให้หมดเลย~",
+              size: "sm" as const,
+              color: "#555555",
+              wrap: true,
+              margin: "md" as const,
+            },
+          ],
+          paddingAll: "xl",
+        },
+        footer: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "button" as const,
+              action: { type: "message" as const, label: "เริ่มเลย! ✨", text: "ทำอะไรได้บ้าง" },
+              style: "primary" as const,
+              color: "#06C755",
+            },
+          ],
+          paddingAll: "md",
+        },
+      },
+      {
+        type: "bubble" as const,
+        size: "kilo" as const,
+        body: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "text" as const,
+              text: "💰 บันทึกง่ายสุดๆ",
+              weight: "bold" as const,
+              size: "lg" as const,
+              color: "#111111",
+              wrap: true,
+            },
+            {
+              type: "text" as const,
+              text: "แค่พิมพ์ 'กินข้าว 200' หรือ 'กาแฟ 75' ระริบันทึกให้เลยค่ะ! ส่งรูปสลิปก็ได้นะ~",
+              size: "sm" as const,
+              color: "#555555",
+              wrap: true,
+              margin: "md" as const,
+            },
+          ],
+          paddingAll: "xl",
+        },
+        footer: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "button" as const,
+              action: { type: "message" as const, label: "ลองบันทึก", text: "จ่าย 50 กาแฟ" },
+              style: "primary" as const,
+              color: "#06C755",
+            },
+          ],
+          paddingAll: "md",
+        },
+      },
+      {
+        type: "bubble" as const,
+        size: "kilo" as const,
+        body: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "text" as const,
+              text: "👥 แชร์ค่าใช้จ่าย",
+              weight: "bold" as const,
+              size: "lg" as const,
+              color: "#111111",
+              wrap: true,
+            },
+            {
+              type: "text" as const,
+              text: "ไปกินข้าวกับเพื่อน? บอกระริว่า 'หารค่าอาหาร 500 3 คน' ระริคำนวณให้เลย~",
+              size: "sm" as const,
+              color: "#555555",
+              wrap: true,
+              margin: "md" as const,
+            },
+          ],
+          paddingAll: "xl",
+        },
+        footer: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "button" as const,
+              action: { type: "message" as const, label: "ดูตัวอย่าง", text: "ทำอะไรได้บ้าง" },
+              style: "primary" as const,
+              color: "#06C755",
+            },
+          ],
+          paddingAll: "md",
+        },
+      },
+      {
+        type: "bubble" as const,
+        size: "kilo" as const,
+        body: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "text" as const,
+              text: "📊 สรุป & งบ & อีกเยอะ!",
+              weight: "bold" as const,
+              size: "lg" as const,
+              color: "#111111",
+              wrap: true,
+            },
+            {
+              type: "text" as const,
+              text: "ดูสรุปรายเดือน, ตั้งงบ, เตือนบิล, เช็คสุขภาพการเงิน — ระริทำได้หมดค่ะ!",
+              size: "sm" as const,
+              color: "#555555",
+              wrap: true,
+              margin: "md" as const,
+            },
+          ],
+          paddingAll: "xl",
+        },
+        footer: {
+          type: "box" as const,
+          layout: "vertical" as const,
+          contents: [
+            {
+              type: "button" as const,
+              action: { type: "message" as const, label: "ดูฟีเจอร์ทั้งหมด", text: "ทำอะไรได้บ้าง" },
+              style: "primary" as const,
+              color: "#06C755",
+            },
+          ],
+          paddingAll: "md",
+        },
+      },
+    ];
+
+    const carousel = createCarousel(bubbles);
+    await pushFlexMessage(userId, "สวัสดีค่ะ! ระริเองค่า~ ผู้ช่วยการเงินส่วนตัว", carousel, sendOpts);
+
+    // Message 2: Quick reply nudge
+    await pushTextMessageWithQuickReplies(
+      userId,
+      "ลองกดปุ่มด้านล่าง หรือพิมพ์อะไรก็ได้เลยค่ะ~ ระริพร้อมช่วยเสมอ! 🌟",
+      ["📝 จ่าย 50 กาแฟ", "📊 สรุปวันนี้", "💰 สุขภาพการเงิน", "❓ ทำอะไรได้บ้าง"],
+      sendOpts,
+    );
+
+    logVerbose(`line: sent onboarding carousel to ${userId}`);
+  } catch (err) {
+    logVerbose(`line: failed to send welcome message to ${userId}: ${String(err)}`);
+  }
 }
 
 async function handleUnfollowEvent(
