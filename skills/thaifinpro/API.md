@@ -57,6 +57,27 @@ All endpoints use:
 45. [List All Users](#list-all-users)
 46. [List Inactive Users](#list-inactive-users)
 
+**Cognitive Memory API (AERITH Architecture)**
+47. [Create Emotional Memory](#47-create-emotional-memory)
+48. [Get Emotional Memories](#48-get-emotional-memories)
+49. [Delete Emotional Memory](#49-delete-emotional-memory)
+50. [Create Narrative Memory](#50-create-narrative-memory)
+51. [Get Narrative Memories](#51-get-narrative-memories)
+52. [Update Narrative Memory](#52-update-narrative-memory)
+53. [Delete Narrative Memory](#53-delete-narrative-memory)
+54. [Create Intent Memory](#54-create-intent-memory)
+55. [Get Intent Memories](#55-get-intent-memories)
+56. [Get Self-Concept](#56-get-self-concept)
+57. [Update Self-Concept](#57-update-self-concept)
+58. [Get Gap Analysis](#58-get-gap-analysis)
+59. [Get Care Graph](#59-get-care-graph)
+60. [Create Care Graph Entry](#60-create-care-graph-entry)
+61. [Update Care Graph Entry](#61-update-care-graph-entry)
+62. [Delete Care Graph Entry](#62-delete-care-graph-entry)
+63. [Get Cognitive State](#63-get-cognitive-state)
+64. [Update Cognitive State](#64-update-cognitive-state)
+65. [Search Memories](#65-search-memories)
+
 ---
 
 ## Create Transaction
@@ -585,3 +606,401 @@ Response: `users[]` with `line_user_id`, `display_name`, `line_display_name`, `a
 Returns users whose `updated_at` is older than `days` threshold (default: 3).
 
 Response: same fields as user list + `days_inactive` calculated field. Plus `total` count and `threshold_days`.
+
+---
+
+# Cognitive Memory API (AERITH Architecture)
+
+Endpoints 47-65 for emotional, narrative, and intent memories, self-concept, care graph, and cognitive state.
+
+**Architecture Layers:**
+- **MEMORY**: emotional, narrative, intent memories + care graph
+- **MIND**: conscious mode (emotional vs analytical)
+- **SELF**: real self, ideal self, gap analysis
+
+**Critical Invariant:** The LLM never edits REAL_SELF directly. All REAL_SELF updates go through backend calculations with write gates.
+
+---
+
+## 47. Create Emotional Memory
+
+`POST /api/v1/ai/cognitive/emotional-memory`
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "trigger": "เครียดเรื่องเงิน",
+  "emotion": "stress",
+  "intensity": 0.7,
+  "confidence": 0.8
+}
+```
+
+Required: `line_user_id`, `trigger`, `emotion`
+Optional: `intensity` (0-1, default 0.5), `confidence` (0-1, default 0.5)
+
+**Write Gates Protect Against:**
+- Low confidence signals (< 0.7)
+- One-off events (requires pattern, min 2 occurrences)
+- Emotional volatility (24hr cooldown per trigger)
+
+Returns either the created memory or a `WriteGateResult`:
+```json
+{
+  "blocked": true,
+  "reason": "confidence_too_low",
+  "message": "Confidence 0.6 below threshold 0.7",
+  "recommendation": "Wait for more signals before recording"
+}
+```
+
+## 48. Get Emotional Memories
+
+`GET /api/v1/ai/cognitive/emotional-memory?line_user_id={line_user_id}`
+
+Optional params: `emotion` (filter by type), `since_days` (1-365), `limit` (1-100, default 50)
+
+Returns memories with decay-adjusted intensity:
+```json
+[
+  {
+    "id": "uuid",
+    "trigger": "เครียดเรื่องเงิน",
+    "emotion": "stress",
+    "intensity": 0.7,
+    "confidence": 0.8,
+    "decay_rate": 0.1,
+    "effective_intensity": 0.63,
+    "last_seen": "2026-02-03T10:00:00Z",
+    "created_at": "2026-02-01T10:00:00Z"
+  }
+]
+```
+
+## 49. Delete Emotional Memory
+
+`DELETE /api/v1/ai/cognitive/emotional-memory/{memory_id}?line_user_id={line_user_id}`
+
+Returns: `{"success": true, "message": "Emotional memory deleted"}`
+
+---
+
+## 50. Create Narrative Memory
+
+`POST /api/v1/ai/cognitive/narrative-memory`
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "event": "ปิดหนี้บัตรเครดิตหมดแล้ว!",
+  "meaning": "ฉันทำได้ ฉันเป็นคนที่ควบคุมการเงินได้",
+  "emotion": "pride",
+  "role": "debt_destroyer",
+  "event_date": "2026-02-01"
+}
+```
+
+Required: `line_user_id`, `event`
+Optional: `meaning`, `emotion`, `role` (identity marker), `event_date`
+
+**No write gates** — these are explicit user-shared events, not inferred.
+
+**Common Roles:**
+- `debt_destroyer` — paid off debt
+- `saver` — hit savings milestone
+- `provider` — supporting family
+- `budgeter` — stayed within budget
+- `survivor` — overcame financial hardship
+
+## 51. Get Narrative Memories
+
+`GET /api/v1/ai/cognitive/narrative-memory?line_user_id={line_user_id}`
+
+Optional params: `role` (filter by identity role), `reusable_only` (default true), `limit` (1-100, default 50)
+
+Reusable memories are milestones that can be referenced in future conversations for encouragement.
+
+## 52. Update Narrative Memory
+
+`PATCH /api/v1/ai/cognitive/narrative-memory/{memory_id}?line_user_id={line_user_id}`
+
+```json
+{
+  "meaning": "Updated meaning",
+  "emotion": "joy",
+  "role": "budgeter",
+  "reusable": true
+}
+```
+
+All fields optional.
+
+## 53. Delete Narrative Memory
+
+`DELETE /api/v1/ai/cognitive/narrative-memory/{memory_id}?line_user_id={line_user_id}`
+
+---
+
+## 54. Create Intent Memory
+
+`POST /api/v1/ai/cognitive/intent-memory`
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "action": "ถอนเงินออม 5000",
+  "intent": "ช่วยค่ารักษาพ่อแม่",
+  "emotion": "worried"
+}
+```
+
+Required: `line_user_id`, `action`, `intent`
+Optional: `emotion`
+
+**Critical Purpose:** Captures the "why" behind financial actions. Prevents judgment — context matters.
+
+**Thai Cultural Context:**
+- ถอนเงินช่วยพ่อแม่ = filial duty, not weakness
+- ใช้เงินเยอะช่วงเทศกาล = cultural norm, not overspending
+
+## 55. Get Intent Memories
+
+`GET /api/v1/ai/cognitive/intent-memory?line_user_id={line_user_id}`
+
+Optional params: `since_days` (1-365), `limit` (1-100, default 50)
+
+---
+
+## 56. Get Self-Concept
+
+`GET /api/v1/ai/cognitive/self-concept?line_user_id={line_user_id}`
+
+Returns:
+```json
+{
+  "id": "uuid",
+  "user_id": "uuid",
+  "real_self": {
+    "monthly_savings": 5000,
+    "stress_level": 0.4,
+    "financial_confidence": 0.6
+  },
+  "ideal_self": {
+    "goal_verbatim": "อยากมีเงินเก็บ 6 เดือน",
+    "goal": "emergency_fund",
+    "time_horizon": 12,
+    "constraints": {"income_limited": true}
+  },
+  "trust": {
+    "trust_level": 0.7,
+    "trust_signals": ["shared_struggle", "accepted_advice"]
+  }
+}
+```
+
+**Real Self** = observable state (backend calculates from transaction data)
+**Ideal Self** = aspirational state (user's own words, 50% verbatim)
+**Trust** = relationship state (how much user trusts Rari)
+
+## 57. Update Self-Concept
+
+`PATCH /api/v1/ai/cognitive/self-concept`
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "goal_verbatim": "อยากมีเงินเก็บ 6 เดือน",
+  "goal": "emergency_fund",
+  "time_horizon": 12,
+  "constraints": {"income_limited": true}
+}
+```
+
+**AI can only update IDEAL_SELF fields:**
+- `goal_verbatim`, `goal`, `time_horizon`, `constraints`
+
+**REAL_SELF fields are backend-only:**
+- `monthly_savings`, `stress_level`, `financial_confidence`
+
+## 58. Get Gap Analysis
+
+`GET /api/v1/ai/cognitive/gap-analysis?line_user_id={line_user_id}`
+
+```json
+{
+  "overall_gap_score": 0.35,
+  "gaps": {
+    "savings": {"current": 5000, "target": 30000, "gap_ratio": 0.83},
+    "stress": {"current": 0.4, "target": 0.2, "gap_ratio": 0.5},
+    "confidence": {"current": 0.6, "target": 0.8, "gap_ratio": 0.25}
+  },
+  "suggested_actions": [
+    "Focus on building emergency fund - largest gap",
+    "Stress is moderate - check for specific triggers"
+  ],
+  "has_sufficient_data": true
+}
+```
+
+Gap score: 0-1, lower is better (closer to ideal).
+
+---
+
+## 59. Get Care Graph
+
+`GET /api/v1/ai/cognitive/care-graph?line_user_id={line_user_id}`
+
+```json
+[
+  {
+    "id": "uuid",
+    "relation": "parents",
+    "weight": 0.9,
+    "notes": "ส่งเงินให้ทุกเดือน 5000฿",
+    "created_at": "2026-01-15T10:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "relation": "siblings",
+    "weight": 0.6,
+    "notes": "ช่วยค่าเทอมน้อง",
+    "created_at": "2026-01-20T10:00:00Z"
+  }
+]
+```
+
+**Thai Cultural Context:** ค่าเลี้ยงพ่อแม่ is strength, not burden. The care graph informs how Rari frames financial decisions.
+
+**Weight meaning:**
+- 0.9-1.0: Primary financial responsibility
+- 0.6-0.8: Regular support
+- 0.3-0.5: Occasional help
+- 0.1-0.2: Emergency only
+
+## 60. Create Care Graph Entry
+
+`POST /api/v1/ai/cognitive/care-graph`
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "relation": "parents",
+  "weight": 0.9,
+  "notes": "ส่งเงินให้ทุกเดือน"
+}
+```
+
+Required: `line_user_id`, `relation`
+Optional: `weight` (0-1, default 0.5), `notes`
+
+## 61. Update Care Graph Entry
+
+`PATCH /api/v1/ai/cognitive/care-graph/{entry_id}?line_user_id={line_user_id}`
+
+```json
+{
+  "weight": 0.8,
+  "notes": "Updated notes"
+}
+```
+
+## 62. Delete Care Graph Entry
+
+`DELETE /api/v1/ai/cognitive/care-graph/{entry_id}?line_user_id={line_user_id}`
+
+---
+
+## 63. Get Cognitive State
+
+`GET /api/v1/ai/cognitive/state?line_user_id={line_user_id}`
+
+**Use at message start to determine response tone.**
+
+```json
+{
+  "mind_mode": "emotional",
+  "trust_level": 0.7,
+  "dominant_emotion": "stress",
+  "active_roles": ["saver", "provider"],
+  "care_priorities": ["parents"],
+  "updated_at": "2026-02-03T10:00:00Z"
+}
+```
+
+**Mind Modes:**
+- `emotional`: Validate first, solutions second ("ระริเข้าใจค่ะ 💕")
+- `analytical`: Direct information, minimal emotional framing
+
+**Response Calibration:**
+| Mind Mode | Trust Level | Response Style |
+|-----------|-------------|----------------|
+| emotional | high | Warm, detailed advice with encouragement |
+| emotional | low | Validate feelings, gentle suggestions |
+| analytical | high | Direct data, proactive recommendations |
+| analytical | low | Facts only, wait for questions |
+
+## 64. Update Cognitive State
+
+`PATCH /api/v1/ai/cognitive/state?line_user_id={line_user_id}`
+
+```json
+{
+  "mind_mode": "analytical"
+}
+```
+
+Switch mind mode based on user's explicit preference or detected communication style.
+
+---
+
+## 65. Search Memories
+
+`POST /api/v1/ai/cognitive/memory-search`
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "query": "parents money help",
+  "memory_types": ["narrative", "intent"],
+  "limit": 10
+}
+```
+
+Required: `line_user_id`, `query`
+Optional: `memory_types` (default all), `limit` (1-50, default 10)
+
+**Memory Scoring:** `score = relevance × recency × intensity × confidence`
+- Narrative memories get 1.5× bonus (always outrank raw emotion)
+- Emotional memories decay over time
+
+```json
+{
+  "results": [
+    {
+      "type": "narrative",
+      "content": {
+        "event": "ช่วยค่ารักษาพ่อ",
+        "meaning": "เป็นลูกที่ดี",
+        "role": "provider"
+      },
+      "score": 0.92,
+      "score_breakdown": {
+        "relevance": 0.9,
+        "recency": 0.95,
+        "intensity": 0.8,
+        "confidence": 0.85,
+        "type_bonus": 1.5
+      }
+    },
+    {
+      "type": "intent",
+      "content": {
+        "action": "ถอนเงินออม 5000",
+        "intent": "ช่วยค่ารักษาพ่อแม่"
+      },
+      "score": 0.78
+    }
+  ],
+  "total_found": 2,
+  "query_tokens": ["parents", "money", "help"]
+}

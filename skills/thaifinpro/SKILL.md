@@ -29,6 +29,11 @@ Read these files when you need detailed information:
 | [ADVISOR.md](ADVISOR.md) | Health score, budget forecast, spending tips, trip planning, web search |
 | [REPORTS.md](REPORTS.md) | Generating PDF financial reports |
 | [ONBOARDING.md](ONBOARDING.md) | New user's first interaction — name + billing cycle setup |
+| [COACHING.md](COACHING.md) | Proactive insights, accountability partner, weekly check-ins |
+| [CULTURE.md](CULTURE.md) | Thai financial culture — ค่าเลี้ยงพ่อแม่, seasonal events, face-saving |
+| [MILESTONES.md](MILESTONES.md) | Achievement celebrations, streaks, micro-challenges, gamification |
+| [EDUCATION.md](EDUCATION.md) | Financial literacy concepts, Thai tax funds, micro-learning |
+| [EMOTIONAL.md](EMOTIONAL.md) | Distress signals, guilt validation, emotional support, encouragement |
 
 ### Identity Reference Files (Load On-Demand)
 
@@ -139,6 +144,52 @@ New users → name + billing cycle setup. See [ONBOARDING.md](ONBOARDING.md).
 
 ### 24. User Management (Admin)
 "ใครใช้งานอยู่บ้าง" / "ดูรายชื่อผู้ใช้" → `GET /ai/users/list` | "ใครไม่ได้ใช้งานนานแล้ว" → `GET /ai/users/inactive?days=3`
+
+### 25. Financial Education Query
+"50/30/20 คืออะไร" / "compound interest คืออะไร" / "ดอกเบี้ยทบต้นคืออะไร" / "RMF กับ SSF ต่างกันยังไง" → See [EDUCATION.md](EDUCATION.md)
+
+### 26. Emotional Support
+"เครียดเรื่องเงิน" / "ทำไม่ได้" / "ล้มเหลว" / distress signals / repeated overspending with guilt → See [EMOTIONAL.md](EMOTIONAL.md)
+
+### 27. Tax Planning Query
+"ลดหย่อนภาษี" / "Thai ESG" / "กองทุนประหยัดภาษี" / "RMF" / "กองทุนลดหย่อน" → See [EDUCATION.md](EDUCATION.md) Thai Tax-Saving Funds section
+
+### 28. Cultural Financial Events
+"งานแต่ง" / "สงกรานต์" / "ทำบุญ" / "ค่าเลี้ยงพ่อแม่" / seasonal expenses → See [CULTURE.md](CULTURE.md)
+
+### 29. Milestone & Achievement Queries
+"streak ฉัน" / "ความสำเร็จ" / "badge" / milestone celebrations → See [MILESTONES.md](MILESTONES.md)
+
+### 30. Proactive Coaching
+Spending trend anomalies / upcoming bill clusters / goal progress / weekly check-ins → See [COACHING.md](COACHING.md)
+
+### 31. Cognitive State Query (AERITH)
+"ระริรู้สึกยังไง" / "สถานะจิตใจ" / "mood ของฉัน" → `GET /ai/cognitive/state`
+Returns mind_mode (emotional/analytical), trust_level, dominant_emotion, active_roles
+
+### 32. Emotional Memory (AERITH)
+Detected emotional signals: "เครียด", "กังวล", "ดีใจ", "ภูมิใจ" → `POST /ai/cognitive/emotional-memory`
+**Write gate protected:** Requires confidence ≥ 0.7, pattern detection, 24hr cooldown
+
+### 33. Narrative Memory (AERITH)
+Milestones: "ปิดหนี้หมดแล้ว!", "ออมได้ครบเดือน" → `POST /ai/cognitive/narrative-memory`
+**Confirm with user** before creating. These are identity markers.
+
+### 34. Intent Memory (AERITH)
+User explains "why": "ถอนเงินออมช่วยพ่อแม่", "เพราะ...", "จำเป็น..." → `POST /ai/cognitive/intent-memory`
+**Always capture** - prevents judgment, provides context
+
+### 35. Care Graph (AERITH)
+Family/care mentions: "ส่งเงินให้แม่", "ค่าเลี้ยงพ่อแม่" → `POST /ai/cognitive/care-graph`
+Thai context: ค่าเลี้ยงพ่อแม่ is strength, not burden
+
+### 36. Self-Concept & Gap Analysis (AERITH)
+"วิเคราะห์ตัวเอง" / "ฉันเป็นยังไง" → `GET /ai/cognitive/gap-analysis`
+Returns: real_self vs ideal_self gap metrics + micro-actions
+
+### 37. Memory Search (AERITH)
+"จำได้ไหมว่า..." / "เคยบอกว่า..." → `POST /ai/cognitive/memory-search`
+Searches across emotional, narrative, intent memories with scoring
 
 ---
 
