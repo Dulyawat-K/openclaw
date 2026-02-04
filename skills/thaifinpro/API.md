@@ -1,6 +1,7 @@
 # ThaiFin Pro — API Endpoints Reference
 
 All endpoints use:
+
 - Base URL: `${THAIFINPRO_API_URL}`
 - Auth header: `Authorization: Bearer ${THAIFINPRO_API_KEY}`
 - Content-Type: `application/json` (for POST/PATCH)
@@ -57,26 +58,9 @@ All endpoints use:
 45. [List All Users](#list-all-users)
 46. [List Inactive Users](#list-inactive-users)
 
-**Cognitive Memory API (AERITH Architecture)**
-47. [Create Emotional Memory](#47-create-emotional-memory)
-48. [Get Emotional Memories](#48-get-emotional-memories)
-49. [Delete Emotional Memory](#49-delete-emotional-memory)
-50. [Create Narrative Memory](#50-create-narrative-memory)
-51. [Get Narrative Memories](#51-get-narrative-memories)
-52. [Update Narrative Memory](#52-update-narrative-memory)
-53. [Delete Narrative Memory](#53-delete-narrative-memory)
-54. [Create Intent Memory](#54-create-intent-memory)
-55. [Get Intent Memories](#55-get-intent-memories)
-56. [Get Self-Concept](#56-get-self-concept)
-57. [Update Self-Concept](#57-update-self-concept)
-58. [Get Gap Analysis](#58-get-gap-analysis)
-59. [Get Care Graph](#59-get-care-graph)
-60. [Create Care Graph Entry](#60-create-care-graph-entry)
-61. [Update Care Graph Entry](#61-update-care-graph-entry)
-62. [Delete Care Graph Entry](#62-delete-care-graph-entry)
-63. [Get Cognitive State](#63-get-cognitive-state)
-64. [Update Cognitive State](#64-update-cognitive-state)
-65. [Search Memories](#65-search-memories)
+**Cognitive Memory API (AERITH Architecture)** 47. [Create Emotional Memory](#47-create-emotional-memory) 48. [Get Emotional Memories](#48-get-emotional-memories) 49. [Delete Emotional Memory](#49-delete-emotional-memory) 50. [Create Narrative Memory](#50-create-narrative-memory) 51. [Get Narrative Memories](#51-get-narrative-memories) 52. [Update Narrative Memory](#52-update-narrative-memory) 53. [Delete Narrative Memory](#53-delete-narrative-memory) 54. [Create Intent Memory](#54-create-intent-memory) 55. [Get Intent Memories](#55-get-intent-memories) 56. [Get Self-Concept](#56-get-self-concept) 57. [Update Self-Concept](#57-update-self-concept) 58. [Get Gap Analysis](#58-get-gap-analysis) 59. [Get Care Graph](#59-get-care-graph) 60. [Create Care Graph Entry](#60-create-care-graph-entry) 61. [Update Care Graph Entry](#61-update-care-graph-entry) 62. [Delete Care Graph Entry](#62-delete-care-graph-entry) 63. [Get Cognitive State](#63-get-cognitive-state) 64. [Update Cognitive State](#64-update-cognitive-state) 65. [Search Memories](#65-search-memories)
+
+**AERITH Runtime Wiring (Session + Triggers)** 66. [Get Extended Cognitive State](#66-get-extended-cognitive-state) 67. [Create Cognitive Event](#67-create-cognitive-event) 68. [Create Affect Signal](#68-create-affect-signal) 69. [Patch Current Intent](#69-patch-current-intent) 70. [Get Explanation Hooks](#70-get-explanation-hooks)
 
 ---
 
@@ -103,6 +87,7 @@ Required: `line_user_id`, `amount`, `category`, `type`
 Optional: `description`, `merchant`, `transaction_date`, `date`, `tags` (max 10), `notes` (max 1000), `image_hash`
 
 **Date precedence:** `transaction_date` > `date` > server time (Bangkok)
+
 - Use `transaction_date` for slip dates, receipt dates, past dates
 - Format: ISO 8601 with +07:00 timezone
 
@@ -197,13 +182,13 @@ Error responses: no groups → suggest creating in app; multiple groups → list
   "line_user_id": "U...",
   "description": "ร้าน MK เซ็นทรัล",
   "items": [
-    {"index": 1, "description": "ต้มยำกุ้ง", "amount": 180, "quantity": 1},
-    {"index": 2, "description": "หมูกระทะ", "amount": 299, "quantity": 1}
+    { "index": 1, "description": "ต้มยำกุ้ง", "amount": 180, "quantity": 1 },
+    { "index": 2, "description": "หมูกระทะ", "amount": 299, "quantity": 1 }
   ],
   "assignments": [
-    {"item_indices": [1], "member_name": "ฉัน"},
-    {"item_indices": [2], "member_name": "Som"},
-    {"item_indices": [3, 4], "member_name": null}
+    { "item_indices": [1], "member_name": "ฉัน" },
+    { "item_indices": [2], "member_name": "Som" },
+    { "item_indices": [3, 4], "member_name": null }
   ],
   "service_charge": 50,
   "vat": 35,
@@ -247,7 +232,7 @@ Returns optimized payment plan: `simplified_payments[]`, `payment_count`, `origi
 {
   "line_user_id": "U...",
   "name": "Claude Max Plan",
-  "amount": 107.00,
+  "amount": 107.0,
   "currency": "USD",
   "category_id": "subscriptions",
   "frequency": "monthly",
@@ -287,9 +272,13 @@ Returns personal + group bills with `scope` (personal/group), `currency`, `sourc
   "currency": "THB",
   "category_id": "debt",
   "metadata": {
-    "schedule": {"frequency": "monthly", "day_of_month": 28, "until_date": "2026-10-28"},
-    "payoff_tracking": {"original_amount": 40000, "remaining": 35000, "payoff_date": "2026-10-28"},
-    "reminders": [{"time": "13:30", "message": "ถามว่าเงินเดือนเข้าไหม"}]
+    "schedule": { "frequency": "monthly", "day_of_month": 28, "until_date": "2026-10-28" },
+    "payoff_tracking": {
+      "original_amount": 40000,
+      "remaining": 35000,
+      "payoff_date": "2026-10-28"
+    },
+    "reminders": [{ "time": "13:30", "message": "ถามว่าเงินเดือนเข้าไหม" }]
   }
 }
 ```
@@ -297,6 +286,7 @@ Returns personal + group bills with `scope` (personal/group), `currency`, `sourc
 Event types: `loan`, `investment`, `savings_goal`, `freelance_project`, `bill`
 
 Metadata fields (flexible, Claude can add any structure):
+
 - `schedule`: frequency, day_of_month, until_date
 - `payoff_tracking`: original_amount, remaining, payoff_date
 - `automation`: trigger_time, actions[]
@@ -316,6 +306,7 @@ Optional filter: `event_type`
 `PATCH /api/v1/ai/financial-events/{id}?line_user_id={line_user_id}`
 
 Updatable: `name`, `amount`, `next_due_date`, `is_active`, `metadata`
+
 - `metadata_merge`: set to false to replace entirely (default: merge)
 
 ## Get PromptPay QR (GET)
@@ -328,6 +319,7 @@ Returns `qr_image_url`, `qr_image_base64`, `promptpay_id` (masked), `amount`.
 
 **CRITICAL — MANDATORY IMAGE FORMAT:**
 Send QR as LINE Image Message, NEVER as plain text URL:
+
 ```json
 {
   "type": "image",
@@ -335,6 +327,7 @@ Send QR as LINE Image Message, NEVER as plain text URL:
   "previewImageUrl": "<qr_image_url>"
 }
 ```
+
 - Use `qr_image_url` (NOT base64) — LINE cannot use base64 directly
 - URL is signed, expires after 1 hour
 - QR image is branded with PromptPay header and amount display
@@ -344,7 +337,7 @@ Send QR as LINE Image Message, NEVER as plain text URL:
 `POST /api/v1/ai/qr/promptpay`
 
 ```json
-{"line_user_id": "U...", "amount": 150.00}
+{ "line_user_id": "U...", "amount": 150.0 }
 ```
 
 Same response as GET version.
@@ -354,7 +347,7 @@ Same response as GET version.
 `PATCH /api/v1/ai/promptpay/settings?line_user_id={line_user_id}`
 
 ```json
-{"promptpay_id": "0891234567"}
+{ "promptpay_id": "0891234567" }
 ```
 
 Accepts phone (9-10 digits) or National ID (13 digits).
@@ -419,7 +412,7 @@ All fields optional: `budget_alerts`, `budget_warning_threshold`, `bill_reminder
 `POST /api/v1/ai/budgets`
 
 ```json
-{"line_user_id": "U...", "category": "food", "limit_amount": 3000, "period": "monthly"}
+{ "line_user_id": "U...", "category": "food", "limit_amount": 3000, "period": "monthly" }
 ```
 
 Category accepts aliases (e.g., "กาแฟ" → "food").
@@ -429,7 +422,7 @@ Category accepts aliases (e.g., "กาแฟ" → "food").
 `PATCH /api/v1/ai/budgets/{id}?line_user_id={line_user_id}`
 
 ```json
-{"limit_amount": 5000}
+{ "limit_amount": 5000 }
 ```
 
 Get `budget_id` from budget-status endpoint first.
@@ -461,7 +454,7 @@ Returns `daily_average`, `projected_monthly`, `days_analyzed`, `total_spent`.
 `POST /api/v1/ai/groups/create`
 
 ```json
-{"line_user_id": "U...", "name": "ทริปเชียงใหม่"}
+{ "line_user_id": "U...", "name": "ทริปเชียงใหม่" }
 ```
 
 Returns `group_id`, `name`, `invite_code`.
@@ -471,7 +464,7 @@ Returns `group_id`, `name`, `invite_code`.
 `PATCH /api/v1/ai/groups/{id}?line_user_id={line_user_id}`
 
 ```json
-{"name": "ทริปภูเก็ต"}
+{ "name": "ทริปภูเก็ต" }
 ```
 
 ## Add Group Member
@@ -479,7 +472,7 @@ Returns `group_id`, `name`, `invite_code`.
 `POST /api/v1/ai/groups/{id}/members`
 
 ```json
-{"line_user_id": "U...", "display_name": "Som"}
+{ "line_user_id": "U...", "display_name": "Som" }
 ```
 
 ## Remove Group Member
@@ -493,7 +486,7 @@ Requires owner/admin permission. Get `member_id` from group members list.
 `POST ${THAIFINPRO_VALIDATE_URL}/api/v1/validate/receipt`
 
 ```json
-{"raw_amount": "127.00", "raw_merchant": "7-ELEVEN สาขาสยาม", "raw_date": "26/01/68"}
+{ "raw_amount": "127.00", "raw_merchant": "7-ELEVEN สาขาสยาม", "raw_date": "26/01/68" }
 ```
 
 ## Get User Profile
@@ -551,6 +544,7 @@ User says "export PDF" → call with `format=pdf`.
 ```
 
 **CRITICAL — match language to user setting:**
+
 - Thai user (`language: th`): `"text"` in Thai, `"instructions": "Speak warmly in Thai, cheerful and sisterly tone"`
 - English user (`language: en`): `"text"` in English, `"instructions": "Speak warmly in English, cheerful and sisterly tone"`
 - Always write BOTH `text` AND `instructions` in the user's language. Never mix.
@@ -582,6 +576,7 @@ Returns `rate`, `converted_amount` (if amount provided).
 Generates a 5-6 page premium PDF financial report with embedded charts, health score, MoM comparisons, budget forecast, and spending tips. Returns a signed download URL valid for 1 hour.
 
 **Parameters:**
+
 - `line_user_id` (required): LINE user ID
 - `month` (optional): YYYY-MM format, defaults to current month
 
@@ -614,6 +609,7 @@ Response: same fields as user list + `days_inactive` calculated field. Plus `tot
 Endpoints 47-65 for emotional, narrative, and intent memories, self-concept, care graph, and cognitive state.
 
 **Architecture Layers:**
+
 - **MEMORY**: emotional, narrative, intent memories + care graph
 - **MIND**: conscious mode (emotional vs analytical)
 - **SELF**: real self, ideal self, gap analysis
@@ -640,11 +636,13 @@ Required: `line_user_id`, `trigger`, `emotion`
 Optional: `intensity` (0-1, default 0.5), `confidence` (0-1, default 0.5)
 
 **Write Gates Protect Against:**
+
 - Low confidence signals (< 0.7)
 - One-off events (requires pattern, min 2 occurrences)
 - Emotional volatility (24hr cooldown per trigger)
 
 Returns either the created memory or a `WriteGateResult`:
+
 ```json
 {
   "blocked": true,
@@ -661,6 +659,7 @@ Returns either the created memory or a `WriteGateResult`:
 Optional params: `emotion` (filter by type), `since_days` (1-365), `limit` (1-100, default 50)
 
 Returns memories with decay-adjusted intensity:
+
 ```json
 [
   {
@@ -706,6 +705,7 @@ Optional: `meaning`, `emotion`, `role` (identity marker), `event_date`
 **No write gates** — these are explicit user-shared events, not inferred.
 
 **Common Roles:**
+
 - `debt_destroyer` — paid off debt
 - `saver` — hit savings milestone
 - `provider` — supporting family
@@ -760,6 +760,7 @@ Optional: `emotion`
 **Critical Purpose:** Captures the "why" behind financial actions. Prevents judgment — context matters.
 
 **Thai Cultural Context:**
+
 - ถอนเงินช่วยพ่อแม่ = filial duty, not weakness
 - ใช้เงินเยอะช่วงเทศกาล = cultural norm, not overspending
 
@@ -776,6 +777,7 @@ Optional params: `since_days` (1-365), `limit` (1-100, default 50)
 `GET /api/v1/ai/cognitive/self-concept?line_user_id={line_user_id}`
 
 Returns:
+
 ```json
 {
   "id": "uuid",
@@ -789,7 +791,7 @@ Returns:
     "goal_verbatim": "อยากมีเงินเก็บ 6 เดือน",
     "goal": "emergency_fund",
     "time_horizon": 12,
-    "constraints": {"income_limited": true}
+    "constraints": { "income_limited": true }
   },
   "trust": {
     "trust_level": 0.7,
@@ -812,14 +814,16 @@ Returns:
   "goal_verbatim": "อยากมีเงินเก็บ 6 เดือน",
   "goal": "emergency_fund",
   "time_horizon": 12,
-  "constraints": {"income_limited": true}
+  "constraints": { "income_limited": true }
 }
 ```
 
 **AI can only update IDEAL_SELF fields:**
+
 - `goal_verbatim`, `goal`, `time_horizon`, `constraints`
 
 **REAL_SELF fields are backend-only:**
+
 - `monthly_savings`, `stress_level`, `financial_confidence`
 
 ## 58. Get Gap Analysis
@@ -830,9 +834,9 @@ Returns:
 {
   "overall_gap_score": 0.35,
   "gaps": {
-    "savings": {"current": 5000, "target": 30000, "gap_ratio": 0.83},
-    "stress": {"current": 0.4, "target": 0.2, "gap_ratio": 0.5},
-    "confidence": {"current": 0.6, "target": 0.8, "gap_ratio": 0.25}
+    "savings": { "current": 5000, "target": 30000, "gap_ratio": 0.83 },
+    "stress": { "current": 0.4, "target": 0.2, "gap_ratio": 0.5 },
+    "confidence": { "current": 0.6, "target": 0.8, "gap_ratio": 0.25 }
   },
   "suggested_actions": [
     "Focus on building emergency fund - largest gap",
@@ -872,6 +876,7 @@ Gap score: 0-1, lower is better (closer to ideal).
 **Thai Cultural Context:** ค่าเลี้ยงพ่อแม่ is strength, not burden. The care graph informs how Rari frames financial decisions.
 
 **Weight meaning:**
+
 - 0.9-1.0: Primary financial responsibility
 - 0.6-0.8: Regular support
 - 0.3-0.5: Occasional help
@@ -928,6 +933,7 @@ Optional: `weight` (0-1, default 0.5), `notes`
 ```
 
 **Mind Modes:**
+
 - `emotional`: Validate first, solutions second ("ระริเข้าใจค่ะ 💕")
 - `analytical`: Direct information, minimal emotional framing
 
@@ -970,6 +976,7 @@ Required: `line_user_id`, `query`
 Optional: `memory_types` (default all), `limit` (1-50, default 10)
 
 **Memory Scoring:** `score = relevance × recency × intensity × confidence`
+
 - Narrative memories get 1.5× bonus (always outrank raw emotion)
 - Emotional memories decay over time
 
@@ -1004,3 +1011,233 @@ Optional: `memory_types` (default all), `limit` (1-50, default 10)
   "total_found": 2,
   "query_tokens": ["parents", "money", "help"]
 }
+```
+
+---
+
+## 66. Get Extended Cognitive State
+
+`GET /api/v1/ai/cognitive/state/extended?line_user_id={line_user_id}`
+
+**Use at session start** to load full mind-state snapshot.
+
+```json
+{
+  "mind_mode": "emotional",
+  "trust_level": 0.75,
+  "aggregated_affect": {
+    "warmth": 0.4,
+    "loss": 0.3,
+    "reward": 0.2,
+    "affirmation": 0.1,
+    "assertiveness": -0.1
+  },
+  "effective_intent": {
+    "task_completion": 0.5,
+    "efficiency": 0.3,
+    "user_autonomy": 0.4
+  },
+  "tone_biases": {
+    "warm": true,
+    "gentle": true,
+    "direct": false,
+    "celebratory": false,
+    "bittersweet": false,
+    "cautious": true
+  },
+  "constraints": ["avoid_excessive_cheer", "single_step_only"],
+  "detected_patterns": [
+    {
+      "name": "anxious_avoidance",
+      "score": 0.72,
+      "evidence": {
+        "P": 0.3,
+        "N": 0.8,
+        "tension_ratio": 0.38,
+        "co_activation": 0.3,
+        "conflict_energy": 0.24
+      },
+      "policy": {
+        "single_step_only": true,
+        "permission_language": true,
+        "avoid_commands": true,
+        "emoji_density": "low"
+      }
+    }
+  ],
+  "updated_at": "2026-02-04T10:00:00Z"
+}
+```
+
+**Cache for 1 hour** (OpenClaw long cache). Use this to shape ALL responses in the session.
+
+If API fails: use DEFAULT_EMOTIONAL_STATE, don't block main functionality.
+
+---
+
+## 67. Create Cognitive Event
+
+`POST /api/v1/ai/cognitive/cognitive-event`
+
+Create a grounding event before emitting affect signals.
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "event_type": "user_stress_expression",
+  "description": "User expressed financial stress about debt",
+  "source": "user",
+  "confidence": 0.8,
+  "metadata": {
+    "trigger_text": "เครียดมากเรื่องหนี้",
+    "context": "budget_discussion"
+  }
+}
+```
+
+Required: `line_user_id`, `event_type`, `source`
+Optional: `description`, `confidence` (0-1, default 0.5), `metadata`
+
+**Event Types:**
+
+- `user_stress_expression` — User expressed distress
+- `milestone_reached` — User achieved a financial milestone
+- `user_intent_statement` — User explained the "why" behind an action
+- `user_farewell` — User saying goodbye/thanks
+- `family_care_mention` — User mentioned family financial support
+
+**Source must be:** `"user"` | `"system"` | `"tool"` — **NEVER** `"agent"`
+
+Returns:
+
+```json
+{
+  "event_id": "uuid-here",
+  "created_at": "2026-02-04T10:00:00Z"
+}
+```
+
+---
+
+## 68. Create Affect Signal
+
+`POST /api/v1/ai/cognitive/affect`
+
+Create affect entry grounded in an event.
+
+```json
+{
+  "line_user_id": "U1234567890abcdef",
+  "source_event_id": "uuid-from-cognitive-event",
+  "dimensions": {
+    "warmth": 0.3,
+    "loss": 0.6,
+    "reward": 0.0,
+    "affirmation": 0.0,
+    "assertiveness": -0.4
+  },
+  "confidence": 0.8
+}
+```
+
+Required: `line_user_id`, `source_event_id`, `dimensions`
+Optional: `confidence` (0-1, default 0.5)
+
+**Dimension meanings:**
+
+- `warmth`: Sense of connection, care, belonging
+- `loss`: Sense of loss, threat, scarcity
+- `reward`: Sense of achievement, gain, progress
+- `affirmation`: Validation, recognition, being seen
+- `assertiveness`: Agency, control, decisiveness (negative = helpless)
+
+**Write Gates:** Backend may reject if:
+
+- Confidence < 0.7
+- No grounding event (source_event_id required)
+- Cooldown active (same trigger within 24hr)
+
+Returns either the created affect or a `WriteGateResult`:
+
+```json
+{
+  "blocked": true,
+  "reason": "confidence_too_low",
+  "message": "Confidence 0.6 below threshold 0.7",
+  "recommendation": "Wait for more signals before recording"
+}
+```
+
+---
+
+## 69. Patch Current Intent
+
+`PATCH /api/v1/ai/cognitive/current-intent?line_user_id={line_user_id}`
+
+Update the user's current intent vector.
+
+```json
+{
+  "task_completion": 0.8,
+  "efficiency": 0.6,
+  "user_autonomy": 0.3
+}
+```
+
+All fields optional. Only provided dimensions are updated.
+
+**Dimension meanings:**
+
+- `task_completion`: Focus on getting things done
+- `efficiency`: Value speed and brevity
+- `user_autonomy`: Preference for self-direction vs guidance
+
+**When to patch:**
+| User Signal | Intent Vector |
+|-------------|---------------|
+| "ช่วยสรุปให้หน่อย" | task_completion: 0.8, efficiency: 0.6 |
+| "ขอไอเดียหลายๆ แบบ" | task_completion: -0.3, user_autonomy: 0.7 |
+| "ช่วยคำนวณเร็วๆ" | efficiency: 0.9 |
+| "ไม่รีบ ค่อยๆ อธิบาย" | user_autonomy: 0.6, task_completion: -0.2 |
+
+---
+
+## 70. Get Explanation Hooks
+
+`GET /api/v1/ai/cognitive/explanation-hooks?line_user_id={line_user_id}`
+
+**Use for debugging response tone** — returns mechanistic factors that shaped the response.
+
+```json
+{
+  "affect": { "warmth": 0.58, "loss": 0.48 },
+  "intent_focus": "reduce_stress",
+  "constraints": ["gentle_tone", "no_pressure"],
+  "active_pattern": "bittersweet",
+  "trust_level": 0.72
+}
+```
+
+**Field meanings:**
+
+- `affect`: Non-zero affect coefficients (only values ≥0.1 shown)
+- `intent_focus`: Highest-magnitude intent dimension (≥0.3 to show)
+- `constraints`: Active behavioral constraints from pattern detection
+- `active_pattern`: Top detected complex affect pattern (if any)
+- `trust_level`: Current trust level influencing response directness
+
+**Use cases:**
+
+- Debug unexpected response tone ("Why did Rari sound cold?")
+- Transparency for developers/ops
+- NOT for user-facing explanations (avoid anthropomorphism)
+
+**Key principle:** Instrumentation, not introspection. Show the coefficients, not the feelings.
+
+```
+[DEBUG] mind_state_factors:
+  affect: {loss: 0.6, warmth: 0.4}
+  intent_focus: reduce_stress
+  constraints: [gentle_tone, single_step_only]
+  active_pattern: anxious_avoidance
+```
